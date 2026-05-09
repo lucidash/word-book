@@ -700,12 +700,37 @@ const slugs = [
 /* ── MP3 player helper ── */
 let currentAudio = null;
 let autoNextEnabled = true;
+let autoPlayTimer = null;
+
+function clearAutoPlayTimer() {
+  if (autoPlayTimer) {
+    clearTimeout(autoPlayTimer);
+    autoPlayTimer = null;
+  }
+}
+
 function goToNextPage(btn) {
   const currentSection = btn.closest('section');
   const nextSection = currentSection?.nextElementSibling;
   if (nextSection?.tagName === 'SECTION') {
     nextSection.scrollIntoView({behavior:'smooth'});
+    return nextSection;
   }
+  return null;
+}
+
+function goToNextWord(btn) {
+  const nextSection = goToNextPage(btn);
+  const nextBtn = nextSection?.querySelector('.btn-play');
+  const nextSrc = nextBtn?.dataset.audioSrc;
+  if (!nextBtn || !nextSrc) return;
+
+  clearAutoPlayTimer();
+  autoPlayTimer = setTimeout(() => {
+    autoPlayTimer = null;
+    if (!autoNextEnabled || currentAudio) return;
+    playWord(nextBtn, nextSrc);
+  }, 600);
 }
 
 function updateAutoNextToggle(btn) {
@@ -715,6 +740,8 @@ function updateAutoNextToggle(btn) {
 }
 
 function playWord(btn, src) {
+  clearAutoPlayTimer();
+
   // stop previous
   if (currentAudio) {
     currentAudio.pause();
@@ -738,6 +765,9 @@ function playWord(btn, src) {
     btn.classList.remove('playing');
     btn.querySelector('.label').textContent = 'Listen!';
     btn.querySelector('.icon').textContent = '🔊';
+    if (currentAudio === audio) {
+      currentAudio = null;
+    }
   });
   audio.onended = () => {
     btn.classList.remove('playing');
@@ -746,7 +776,7 @@ function playWord(btn, src) {
     if (currentAudio === audio) {
       currentAudio = null;
       if (autoNextEnabled) {
-        goToNextPage(btn);
+        goToNextWord(btn);
       }
     }
   };
@@ -760,6 +790,9 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAutoNextToggle(autoNextToggle);
   autoNextToggle.addEventListener('click', () => {
     autoNextEnabled = !autoNextEnabled;
+    if (!autoNextEnabled) {
+      clearAutoPlayTimer();
+    }
     updateAutoNextToggle(autoNextToggle);
   });
 
@@ -779,7 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <svg class="illustration" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">${svgInner}</svg>
       <div class="word">${word}</div>
       <div class="audio-btns">
-        <button class="btn-play">
+        <button class="btn-play" type="button">
           <span class="icon">🔊</span>
           <span class="label">Listen!</span>
         </button>
@@ -791,6 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btn = sec.querySelector('.btn-play');
     const mp3 = `audio/${slugs[i]}.mp3`;
+    btn.dataset.audioSrc = mp3;
     btn.addEventListener('click', () => playWord(btn, mp3));
 
     const dot = document.createElement('div');
