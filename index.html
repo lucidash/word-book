@@ -57,11 +57,33 @@ section{scroll-snap-align:start;height:100vh;display:flex;flex-direction:column;
   from{box-shadow:0 4px 18px rgba(0,0,0,.25)}
   to  {box-shadow:0 0 28px rgba(255,255,255,.7),0 4px 18px rgba(0,0,0,.2)}}
 @keyframes iconBounce{from{transform:scale(1)}to{transform:scale(1.4)}}
+.auto-toggle{
+  position:fixed;right:18px;bottom:18px;z-index:1000;
+  border:none;border-radius:50px;
+  background:rgba(255,255,255,.94);color:#2d3436;
+  padding:10px 16px;min-height:44px;
+  display:flex;align-items:center;gap:8px;
+  font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:900;
+  box-shadow:0 6px 24px rgba(0,0,0,.28);
+  cursor:pointer;transition:transform .15s,background .15s,color .15s,box-shadow .15s;
+  backdrop-filter:blur(8px)}
+.auto-toggle:hover{transform:scale(1.05);box-shadow:0 8px 28px rgba(0,0,0,.34)}
+.auto-toggle:active{transform:scale(.96)}
+.auto-toggle .auto-state{font-family:'Fredoka One',cursive;color:#00b894}
+.auto-toggle.off{background:rgba(45,52,54,.9);color:#fff}
+.auto-toggle.off .auto-state{color:#ff7675}
+@media (max-width:480px){
+  .auto-toggle{right:12px;bottom:12px;padding:9px 12px;font-size:.85rem}
+}
 </style>
 </head>
 <body>
 
 <div id="nav"></div>
+<button id="autoNextToggle" class="auto-toggle" type="button" aria-pressed="true">
+  <span>자동 넘김</span>
+  <span class="auto-state">ON</span>
+</button>
 
 <section class="cover" id="s0">
   <svg class="illustration" viewBox="0 0 200 200">
@@ -677,6 +699,21 @@ const slugs = [
 
 /* ── MP3 player helper ── */
 let currentAudio = null;
+let autoNextEnabled = true;
+function goToNextPage(btn) {
+  const currentSection = btn.closest('section');
+  const nextSection = currentSection?.nextElementSibling;
+  if (nextSection?.tagName === 'SECTION') {
+    nextSection.scrollIntoView({behavior:'smooth'});
+  }
+}
+
+function updateAutoNextToggle(btn) {
+  btn.classList.toggle('off', !autoNextEnabled);
+  btn.setAttribute('aria-pressed', String(autoNextEnabled));
+  btn.querySelector('.auto-state').textContent = autoNextEnabled ? 'ON' : 'OFF';
+}
+
 function playWord(btn, src) {
   // stop previous
   if (currentAudio) {
@@ -706,13 +743,25 @@ function playWord(btn, src) {
     btn.classList.remove('playing');
     btn.querySelector('.label').textContent = 'Listen!';
     btn.querySelector('.icon').textContent = '🔊';
-    currentAudio = null;
+    if (currentAudio === audio) {
+      currentAudio = null;
+      if (autoNextEnabled) {
+        goToNextPage(btn);
+      }
+    }
   };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const nav = document.getElementById('nav');
+  const autoNextToggle = document.getElementById('autoNextToggle');
   const slides = [document.getElementById('s0')];
+
+  updateAutoNextToggle(autoNextToggle);
+  autoNextToggle.addEventListener('click', () => {
+    autoNextEnabled = !autoNextEnabled;
+    updateAutoNextToggle(autoNextToggle);
+  });
 
   // Cover dot
   const d0 = document.createElement('div');
